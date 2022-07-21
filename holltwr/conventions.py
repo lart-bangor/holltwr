@@ -3,6 +3,7 @@
 This module provides functionality for loading, storing, and using *holltwr*'s TextGrid
 Annotation Conventions.
 """
+from collections import ChainMap
 from dataclasses import dataclass
 from typing import Literal, TypeGuard, Any
 from typing_extensions import Self
@@ -138,6 +139,7 @@ class Meta:
             "author": self.author
         }
 
+
 @dataclass
 class Options:
     compact_tier: str
@@ -165,7 +167,20 @@ class Options:
 @dataclass
 class Tier:
     name: str
-    content: dict[str, Tag]
+    content: dict[str, Tag | SpecialTag]
+
+    @classmethod
+    def fromdata(cls, data: tuple[str, list[str]], tagrefs: dict[str, Tag | SpecialTag]) -> Self:
+        name = data[0]
+        content: dict[str, Tag] = {}
+        for tag in data[1]:
+            if tag not in tagrefs:
+                raise ValueError(f"No tag reference found for tag {tag!r}")
+            content[tag] = tagrefs[tag]
+        return cls(name, content)
+
+    def todata(self) -> tuple[str, list[str]]:
+        return (self.name, list(self.content.keys()))
 
 
 class Convention:
@@ -175,6 +190,17 @@ class Convention:
     special_tags: dict[str, SpecialTag]
     tags: dict[str, Tag]
     tiers: dict[str, Tier]
+    alltags: ChainMap[str, Tag | SpecialTag]
 
-    def __init__(self):
-        ...
+    def __init__(
+        self, meta: Meta, options: Options,
+        special_tags: dict[str, SpecialTag],
+        tags: dict[str, Tag],
+        tiers: dict[str, Tier]
+    ):
+        self.meta = meta
+        self.options = options
+        self.special_tags = special_tags
+        self.tags = tags
+        self.tiers = tiers
+        self.alltags = ChainMap(self.tags, self.special_tags)
