@@ -1,0 +1,47 @@
+{
+    "meta": {
+        "name": "LART Study 5 Transcription Conventions",
+        "description": "Conventions for compact annotations of audio recordings used in LART's 5th study",
+        "version": "0.0.2",
+        "date": "2022-07-01",
+        "author": "Jago Williams <elu37c@bangor.ac.uk>, Florian Breit <f.breit@bangor.ac.uk>"
+
+    },
+    "options": {
+        "compact-tier": "NAME",
+        "retain-compact": true,
+        "case-sensitive": false,
+        "tag-separator": ","
+    },
+    "specialtags": {
+        "x": {
+            "function": "overlap-separator",
+            "preserve": true,
+            "output": "/"
+        },
+        "-": {
+            "function": "comment",
+            "preserve": true,
+            "output": ""
+        }
+    },
+    "tags": {
+        "c": ["cym", "Welsh (Cymraeg)"],
+        "e": ["eng", "English"],
+        "i": ["ita", "Italian"],
+        "b": ["lmo", "Lombard (Bergamasque)"],
+        "g": ["deu", "German"],
+        "m": ["ltz", "Moselle-Franconian"],
+        "p": ["part", "Participant"],
+        "a": ["actor", "Actor"],
+        "o": ["other", "Other"],
+        "s": ["switch", "Actor attempting to induce language switch"],
+        "h": ["hesitation", "Speaker hesitat(s/ed)"],
+        "u": ["unk", "Unknown/unsure (ignore for analysis)"]
+    },
+    "tiers": {
+        "Speaker": ["p", "a", "o"],
+        "Language": ["c", "e", "i", "b", "g", "m"],
+        "Comment": ["-"]
+    }
+}
