@@ -13,7 +13,7 @@
         "case-sensitive": false,
         "tag-separator": ","
     },
-    "specialtags": {
+    "special-tags": {
         "x": {
             "function": "overlap-separator",
             "preserve": true,

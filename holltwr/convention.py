@@ -3,6 +3,7 @@
 This module provides functionality for loading, storing, and using *holltwr*'s TextGrid
 Annotation Conventions.
 """
+from dataclasses import dataclass
 from typing import Literal, TypeGuard, Any
 from typing_extensions import Self
 
@@ -116,13 +117,64 @@ class SpecialTag(Tag):
         return f"{self.__class__.__name__}({self.function}: {self.input} -> {self.output}...)"
 
 
+@dataclass
 class Meta:
-    ...
+    name: str
+    version: str
+    date: str
+    description: str = ""
+    author: str = ""
+
+    @classmethod
+    def fromdata(cls, data: dict[str, str]) -> Self:
+        return cls(**data)
+
+    def todata(self) -> dict[str, str]:
+        return {
+            "name": self.name,
+            "version": self.version,
+            "date": self.date,
+            "description": self.description,
+            "author": self.author
+        }
+
+@dataclass
+class Options:
+    compact_tier: str
+    retain_compact: bool = True
+    case_sensitive: bool = True
+    tag_separator: str = ","
+
+    @classmethod
+    def fromdata(cls, data: dict[str, str | bool]) -> Self:
+        for key in data.keys():
+            data[key.replace("-","_")] = data.pop(key)
+        return cls(**data)  # type: ignore
+
+    def todata(self) -> dict[str, str | bool]:
+        d: dict[str, str | bool] = {"compact-dir": self.compact_tier}
+        if not self.retain_compact:
+            d["retain-compact"] = False
+        if not self.case_sensitive:
+            d["case-sensitive"] = False
+        if self.tag_separator != ",":
+            d["tag-separator"] = self.tag_separator
+        return d
+
+
+@dataclass
+class Tier:
+    name: str
+    content: dict[str, Tag]
 
 
 class Convention:
 
-    name: str
+    meta: Meta
+    options: Options
+    special_tags: dict[str, SpecialTag]
+    tags: dict[str, Tag]
+    tiers: dict[str, Tier]
 
     def __init__(self):
         ...
