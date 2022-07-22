@@ -3,14 +3,31 @@
 This module provides functionality for loading, storing, and using *holltwr*'s TextGrid
 Annotation Conventions.
 """
+import importlib.resources
+import json
+import jschon
 from collections import ChainMap
 from dataclasses import dataclass
-from typing import Literal, TypeGuard, Any
+from pathlib import Path
+from typing import Literal, TextIO, TypeGuard, Any
 from typing_extensions import Self
+from .errors import JSONValidationError
 
 
 def _is_str(x: Any) -> TypeGuard[str]:
     return isinstance(x, str)
+
+_json_catalog = jschon.create_catalog("2020-12")
+_json_schema: jschon.JSONSchema | None = None
+
+
+def _get_schema() -> jschon.JSONSchema:
+    global _json_schema
+    return _json_schema or (
+        _json_schema := jschon.JSONSchema.loads(  # type: ignore
+            importlib.resources.read_text(__package__, "convention.schema.json")
+        )
+    )
 
 
 class Tag:
@@ -110,7 +127,7 @@ class SpecialTag(Tag):
 
     def __repr__(self) -> str:
         return (f"{self.__class__.__name__}({self.input!r}, "
-                f"{self.function!r}, {self.output!r}, , {self.preserve!r})")
+                f"{self.function!r}, {self.output!r}, {self.preserve!r})")
 
     def __str__(self) -> str:
         if not self.preserve:
@@ -149,7 +166,8 @@ class Options:
 
     @classmethod
     def fromdata(cls, data: dict[str, str | bool]) -> Self:
-        for key in data.keys():
+        keys = list(data.keys())
+        for key in keys:
             data[key.replace("-","_")] = data.pop(key)
         return cls(**data)  # type: ignore
 
@@ -193,7 +211,9 @@ class Convention:
     alltags: ChainMap[str, Tag | SpecialTag]
 
     def __init__(
-        self, meta: Meta, options: Options,
+        self,
+        meta: Meta,
+        options: Options,
         special_tags: dict[str, SpecialTag],
         tags: dict[str, Tag],
         tiers: dict[str, Tier]
@@ -204,3 +224,56 @@ class Convention:
         self.tags = tags
         self.tiers = tiers
         self.alltags = ChainMap(self.tags, self.special_tags)
+
+    @classmethod
+    def fromdata(cls, data: dict[str, dict[str, Any]]) -> Self:
+        testdata = jschon.JSON(data)
+        schema = _get_schema()
+        result = schema.evaluate(testdata)
+        cls._raise_validation_status(result)
+        meta = Meta.fromdata(data["meta"])
+        options = Options.fromdata(data["options"])
+        special_tags: dict[str, SpecialTag] = {}
+        for tag_label, tag_props in data["special-tags"].items():
+            special_tags[tag_label] = SpecialTag(tag_label, **tag_props)
+        tags:  dict[str, Tag] = {}
+        for tag_label, tag_props in data["tags"].items():
+            tags[tag_label] = Tag(tag_label, *tag_props)
+        alltags: ChainMap[str, Tag | SpecialTag] = ChainMap(tags, special_tags)
+        tiers: dict[str, Tier] = {}
+        for tier_label, tier_tag_labels in data["tiers"].items():
+            tier_tags: dict[str, Tag | SpecialTag] = {}
+            for tag_label in tier_tag_labels:
+                if tag_label not in alltags:
+                    raise KeyError(f"Tier {tier_label!r} references undefined tag {tag_label!r}")
+                tier_tags[tag_label] = alltags[tag_label]
+            tiers[tier_label] = Tier(tier_label, tier_tags)
+        return cls(meta=meta, options=options, special_tags=special_tags, tags=tags, tiers=tiers)
+
+    @classmethod
+    def _raise_validation_status(cls, result: jschon.jsonschema.Scope):
+        if not result.valid:
+            raise JSONValidationError(
+                "Convention data failed validation",
+                errors=list(result.collect_errors())
+            )
+
+    @classmethod
+    def load(cls, file: Path | str | TextIO) -> Self:
+        if isinstance(file, str):
+            file = Path(file)
+        if isinstance(file, Path):
+            with file.open("r") as fp:
+                return cls.fromdata(json.load(fp))
+        return cls.fromdata(json.load(file))
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}({self.meta!r}, {self.options!r}, "
+            f"{self.special_tags!r}, {self.tags!r}, {self.tiers!r})"
+        )
+
+    def __str__(self) -> str:
+        return (
+            f"{self.__class__.__name__}({self.meta.name!r}, v{self.meta.version})"
+        )
