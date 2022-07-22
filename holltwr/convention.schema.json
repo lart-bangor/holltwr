@@ -1,0 +1,221 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "lart.holltwr.convention.schema.json",
+    "title": "Compact TextGrid Annotation Convention",
+    "description": "A convention for compact annotation of Praat TextGrids",
+    "type": "object",
+    "properties": {
+        "meta": {
+          "description": "Metadata describing the convention",
+          "examples": [
+            {
+                "name": "My Lab's Compact Annotation Convention",
+                "description": "A general purpose compact annotation schema used at My Lab",
+                "version": "2.4",
+                "date": "2021-03-19",
+                "author": "Phrançoise Phonétique <ph.phonetique@mylab.parisxiv.fr>"
+            }
+          ],
+          "type": "object",
+          "properties": {
+            "name": {
+                "description": "The name of the convention",
+                "type": "string"
+            },
+            "version": {
+                "description": "A semantic version number for the convention, e.g. 1.2.3",
+                "type": "string",
+                "pattern": "^\\d+\\.\\d+(\\.\\d+)?(a|b|rc\\d*)?$"
+            },
+            "date": {
+                "description": "The date on which the convention was last updated (YYYY-MM-DD)",
+                "examples": [
+                    "1985-10-26",
+                    "2015-10-21",
+                    "1955-11-12"
+                ],
+                "type": "string",
+                "format": "date",
+                "pattern": "^\\d\\d\\d\\d-[0-1]\\d-[0-3]\\d$"
+            },
+            "description": {
+                "description": "A brief description of the convention",
+                "default": "",
+                "type": "string"
+            },
+            "author": {
+                "description": "One or more authors of the convention, separated by commas",
+                "default": "",
+                "examples": [
+                    "Phrançoise Phonétique",
+                    "Phrançoise Phonétique <ph.phonetique@mylab.parisxiv.fr>",
+                    "Simon M. Tating <s.tating@issos.ac.uk>, Phrançoise Phonétique <ph.phonetique@mylab.parisxiv.fr>"
+                ],
+                "type": "string"
+            }
+          },
+          "required": ["name", "version", "date"]
+        },
+        "options": {
+            "description": "Parsing and conversion options for the convention",
+            "examples": [
+                {
+                    "compact-tier": "anno"
+                },
+                {
+                    "compact-tier": "Compact",
+                    "case-sensitive": false,
+                    "tag-separator": ":"
+                }
+            ],
+            "type": "object",
+            "properties": {
+                "compact-tier": {
+                    "$ref": "#/$defs/tier-name"
+                },
+                "retain-compact": {
+                    "description": "Whether the compact tier should be retained when converting annotations",
+                    "type": "boolean",
+                    "default": true
+                },
+                "case-sensitive": {
+                    "description": "Whether annotation tags are case-sensitive",
+                    "type": "boolean",
+                    "default": true
+                },
+                "tag-separator": {
+                    "description": "A separator string to be used if more than one tag's output is written to the same interval on a tier",
+                    "type": "string",
+                    "default": ","
+                }
+            },
+            "required": ["compact-tier"]
+        },
+        "special-tags": {
+            "description": "Annotation tags with a special meaning, e.g. comments, overlaps, ...",
+            "examples": [
+                {
+                    "%": {
+                        "function": "comment"
+                    }
+                },
+                {
+                    "_": {
+                        "function": "overlap-separator",
+                        "preserve": true,
+                        "output": " | "
+                    },
+                    "#": {
+                        "function": "comment",
+                        "preserve": true
+                    }
+                }
+            ],
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/$defs/special-tag"
+            },
+            "propertyNames": {
+                "$ref": "#/$defs/short-tag"
+            }
+        },
+        "tags": {
+            "description": "Annotation tags for the convention",
+            "examples": [
+                {
+                    "e": ["eng",  "English"],
+                    "c": ["cym",  "Cymraeg"],
+                    "u": ["unk",  "Unknown"],
+                    "1": ["spk1", "Speaker 1"],
+                    "2": ["spk2", "Speaker 2"],
+                    "R": ["res",  "Researcher"]
+                },
+                {
+                    "D": ["deu", "Deutsch"],
+                    "I": ["ita", "Italian"],
+                    "+": ["yes", "Codeswitching"]
+                }
+            ],
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/$defs/tag"
+            },
+            "propertyNames": {
+                "$ref": "#/$defs/short-tag"
+            }
+        },
+        "tiers": {
+            "description": "Tiers to which information from the compact annotation expands",
+            "examples": [
+                {
+                    "speaker": ["1", "2", "R"],
+                    "lang": ["e", "c", "u"]
+                },
+                {
+                    "Lg": ["D", "I"],
+                    "CS": ["+"],
+                    "Cmnt": ["#"]
+                }
+            ],
+            "type": "object",
+            "additionalProperties": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/$defs/short-tag"
+                },
+                "uniqueItems": true
+            }
+        }
+      },
+      "required": ["meta", "options", "special-tags", "tags", "tiers"],
+      "$defs": {
+        "special-tag": {
+            "description": "An annotation tag with a reserved, special meaning, e.g. for comments",
+            "type": "object",
+            "properties": {
+                "function": {
+                    "description": "The functional identity of the special tag",
+                    "enum": ["overlap-separator", "comment"]
+                },
+                "preserve": {
+                    "description": "Whether to preserve the value associated with this tag for expansion",
+                    "type": "boolean",
+                    "default": false
+                },
+                "output": {
+                    "description": "A string to be shown in the expanded output in the positions the special tag applies",
+                    "type": "string",
+                    "default": ""
+                }
+            },
+            "required": ["function"]
+        },
+        "tag": {
+            "description": "A general compact annotation tag",
+            "type": "array",
+            "prefixItems": [
+                {
+                    "description": "The expanded annotation indicated by the tag written in expanded output",
+                    "type": "string"
+                },
+                {
+                    "description": "A user-friendly description of what the tag means.",
+                    "type": "string"
+                }
+            ],
+            "items": false,
+            "minItems": 1
+        },
+        "short-tag": {
+            "description": "A short, single letter tag identifier for compact annotations",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1
+        },
+        "tier-name": {
+            "description": "The name of a TextGrid tier",
+            "type": "string",
+            "minLength": 1
+        }
+      }
+  }
