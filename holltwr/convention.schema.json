@@ -92,7 +92,7 @@
             "required": ["compact-tier"]
         },
         "special-tags": {
-            "description": "Annotation tags with a special meaning, e.g. comments, overlaps, ...",
+            "description": "Annotation tags with a special meaning, e.g. comments, parts/overlaps, ...",
             "examples": [
                 {
                     "%": {
@@ -101,7 +101,7 @@
                 },
                 {
                     "_": {
-                        "function": "overlap-separator",
+                        "function": "part-separator",
                         "preserve": true,
                         "output": " | "
                     },
@@ -175,7 +175,7 @@
             "properties": {
                 "function": {
                     "description": "The functional identity of the special tag",
-                    "enum": ["overlap-separator", "comment"]
+                    "enum": ["part-separator", "comment"]
                 },
                 "preserve": {
                     "description": "Whether to preserve the value associated with this tag for expansion",

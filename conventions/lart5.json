@@ -15,7 +15,7 @@
     },
     "special-tags": {
         "x": {
-            "function": "overlap-separator",
+            "function": "part-separator",
             "preserve": true,
             "output": "/"
         },
@@ -42,6 +42,7 @@
     "tiers": {
         "Speaker": ["p", "a", "o"],
         "Language": ["c", "e", "i", "b", "g", "m"],
+        "Hesitation": ["h"],
         "Comment": ["-"]
     }
 }

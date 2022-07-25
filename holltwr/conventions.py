@@ -1,4 +1,4 @@
-"""Compact TextGrid Annotation Conventions.
+"""Compact TextGrid Annotation Conventions
 
 This module provides functionality for loading, storing, and using *holltwr*'s TextGrid
 Annotation Conventions.
@@ -79,8 +79,8 @@ class Tag:
 
 class SpecialTag(Tag):
 
-    Functions: tuple[str, str] = ("overlap-separator", "comment")
-    FunctionT = Literal["overlap-separator", "comment"]
+    Functions: tuple[str, str] = ("part-separator", "comment")
+    FunctionT = Literal["part-separator", "comment"]
 
     _function: FunctionT
     _preserve: bool
@@ -255,7 +255,7 @@ class Convention:
         if not result.valid:
             raise JSONValidationError(
                 "Convention data failed validation",
-                errors=list(result.collect_errors())
+                errors=list(result.collect_errors())  # type: ignore
             )
 
     @classmethod
