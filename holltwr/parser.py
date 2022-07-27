@@ -104,39 +104,58 @@ class AnnotationParser:
         base_parts: dict[str, list[str]],
         comment: str | None
     ) -> AnnotationTierMap:
-        comment_str = self._comment_marker.output
-        comment_str += comment or ""
         tier_map: dict[str, AnnotationTier] = {}
         for tname, tprops in self.convention.tiers.items():
-            if len(tprops.content) == 1 and tuple(tprops.content) == (self._comment_marker.input,):
-                tier_map[tname] = AnnotationTier(
+            if self.is_pure_comment_tier(tprops):
+                tier_map[tname] = self.make_comment_tier(comment)
+            else:
+                tier_map[tname] = self.make_general_tier(tprops, base_parts, comment)
+        return AnnotationTierMap(tier_map)
+
+    def is_pure_comment_tier(self, tier: conventions.Tier) -> bool:
+        """Determine whether a tier convention encodes a pure comment tier."""
+        return len(tier.content) == 1 and tuple(tier.content) == (self._comment_marker.input,)
+
+    def make_comment_tier(self, comment: str | None = None) -> AnnotationTier:
+        """Make a one-part AnnotationTier of type `AnnotationTierType.COMMENT`."""
+        return AnnotationTier(
                     self._part_separator.output,
                     (AnnotationPart(
                         str(comment),
                         self.convention.options.tag_separator,
-                        (comment_str,)
+                        (self.make_comment_str(comment),)
                     ),),
                     type=AnnotationTierType.COMMENT
                 )
-                continue
-            parts: list[AnnotationPart] = []
-            for base_part in base_parts:
-                compact_part: list[str] = []
-                expanded_part: list[str] = []
-                for ctag in tprops.content:
-                    if ctag in base_part:
-                        compact_part.append(ctag)
-                        expanded_part.append(tprops.content[ctag].output)
-                    if ctag == self._comment_marker.input:
-                        compact_part.append(self._comment_marker.input)
-                        expanded_part.append(comment_str)
-                parts.append(AnnotationPart(
-                    "".join(compact_part),
-                    self.convention.options.tag_separator,
-                    tuple(expanded_part)
-                ))
-            tier_map[tname] = AnnotationTier(
-                self._part_separator.output,
-                tuple(parts)
-            )
-        return AnnotationTierMap(tier_map)
+
+    def make_comment_str(self, comment: str | None = None) -> str:
+        """Prepare a string with representation with comment marker from a comment."""
+        return self._comment_marker.output + (comment or "")
+
+    def make_general_tier(
+        self,
+        tier: conventions.Tier,
+        base_parts: dict[str, list[str]],
+        comment: str | None
+    ) -> AnnotationTier:
+        """Make a multi-part general AnnotationTier"""
+        parts: list[AnnotationPart] = []
+        for base_part in base_parts:
+            compact_part: list[str] = []
+            expanded_part: list[str] = []
+            for ctag in tier.content:
+                if ctag in base_part:
+                    compact_part.append(ctag)
+                    expanded_part.append(tier.content[ctag].output)
+                if ctag == self._comment_marker.input:
+                    compact_part.append(self._comment_marker.input)
+                    expanded_part.append(self.make_comment_str(comment))
+            parts.append(AnnotationPart(
+                "".join(compact_part),
+                self.convention.options.tag_separator,
+                tuple(expanded_part)
+            ))
+        return AnnotationTier(
+            self._part_separator.output,
+            tuple(parts)
+        )
