@@ -17,6 +17,7 @@ from .errors import JSONValidationError
 def _is_str(x: Any) -> TypeGuard[str]:
     return isinstance(x, str)
 
+
 _json_catalog = jschon.create_catalog("2020-12")
 _json_schema: jschon.JSONSchema | None = None
 
@@ -114,7 +115,9 @@ class SpecialTag(Tag):
     @function.setter
     def function(self, function: FunctionT):
         if function not in self.Functions:
-            raise TypeError(f"SpecialTag function must be one of {self.Functions}, {type(function)} given")
+            raise TypeError(
+                f"SpecialTag function must be one of {self.Functions}, {type(function)} given"
+            )
         self._function = function
 
     @property
@@ -168,7 +171,7 @@ class Options:
     def fromdata(cls, data: dict[str, str | bool]) -> Self:
         keys = list(data.keys())
         for key in keys:
-            data[key.replace("-","_")] = data.pop(key)
+            data[key.replace("-", "_")] = data.pop(key)
         return cls(**data)  # type: ignore
 
     def todata(self) -> dict[str, str | bool]:
@@ -223,7 +226,7 @@ class Convention:
         self.special_tags = special_tags
         self.tags = tags
         self.tiers = tiers
-        self.alltags = ChainMap(self.tags, self.special_tags)
+        self.alltags = ChainMap(self.tags, self.special_tags)   # type: ignore
 
     @classmethod
     def fromdata(cls, data: dict[str, dict[str, Any]]) -> Self:
@@ -239,7 +242,7 @@ class Convention:
         tags:  dict[str, Tag] = {}
         for tag_label, tag_props in data["tags"].items():
             tags[tag_label] = Tag(tag_label, *tag_props)
-        alltags: ChainMap[str, Tag | SpecialTag] = ChainMap(tags, special_tags)
+        alltags: ChainMap[str, Tag | SpecialTag] = ChainMap(tags, special_tags)  # type: ignore
         tiers: dict[str, Tier] = {}
         for tier_label, tier_tag_labels in data["tiers"].items():
             tier_tags: dict[str, Tag | SpecialTag] = {}
