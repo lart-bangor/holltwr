@@ -8,7 +8,7 @@
 
     },
     "options": {
-        "compact-tier": "NAME",
+        "compact-tier": "manual",
         "retain-compact": true,
         "case-sensitive": false,
         "tag-separator": ","
@@ -40,9 +40,9 @@
         "u": ["unk", "Unknown/unsure (ignore for analysis)"]
     },
     "tiers": {
-        "Speaker": ["p", "a", "o"],
-        "Language": ["c", "e", "i", "b", "g", "m"],
-        "Hesitation": ["h"],
-        "Comment": ["-"]
+        "speaker": ["p", "a", "o"],
+        "language": ["c", "e", "i", "b", "g", "m"],
+        "hesitate": ["h"],
+        "comment": ["-"]
     }
 }
