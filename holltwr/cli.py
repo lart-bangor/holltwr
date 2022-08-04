@@ -89,7 +89,7 @@ configuration = Configuration()
 
 @click.group()
 def main(**kwargs: dict[str, Any]):
-    """A command line utility for splitting compact Praat TextGrid annotations.
+    """holltwr: The TextGrid Annotation Splitter.
 
     holltwr /ˈhɔɬ.tur/ is a command line utility for automated splitting of
     compact Praat TextGrid annotations into several separate tiers following
@@ -105,25 +105,26 @@ def main(**kwargs: dict[str, Any]):
     pass
 
 
-def _split_file(source, dest):
-    convention_file = Path("./conventions/lart5.json")
-    convention = Convention.load(convention_file)
-    parser = AnnotationParser(convention)
-    with TextGrid(str(source)) as tg:
-        process_textgrid(tg, parser)
-        tg.save(str(dest))
-
-
 @main.command()
 @click.argument(
     "source",
     type=click.Path(path_type=Path, exists=True, file_okay=True, dir_okay=False),
-    nargs=-1
+    nargs=-1,
+    required=True
 )
 @click.option(
     "-d", "--destination",
     required=False,
-    default=None
+    default=None,
+    help=(
+        "A path or renaming pattern for the output. "
+        "If not specified files will be modified in-situ. "
+        "An argument ending with a slash ('/' or '\\') will be treated as the "
+        "path to a directory to store output files. "
+        "An argument containing at most a single asterisk ('*') will be treated"
+        " as a renaming pattern, where * will be replaced with the relative "
+        "path and filename of the source file, except its final file extension."
+    )
 )
 @click.option(
     "-c", "--convention",
@@ -131,9 +132,59 @@ def _split_file(source, dest):
         exists=True, file_okay=True, dir_okay=False, readable=True,
         resolve_path=True, path_type=Path
     ),
-    default=None
+    default=None,
+    help=(
+        "Path to a compact annotation convention file. "
+        "Can be left unspecified if a default convention has been set with the "
+        f"command 'holltwr config default-convention'. "
+        "The provided file must validate against holltwr's Convention JSON "
+        f"Schema (see 'holltwr validate convention')."
+    )
 )
-def split(source: tuple[Path], destination: str | None = None, convention: Path | None = None):
+@click.option(
+    '--yes', is_flag=True,
+    help="Confirm that holltwr may overwrite files without prompting."
+)
+def split(
+    source: tuple[Path],
+    destination: str | None = None,
+    convention: Path | None = None,
+    yes: bool = False
+):
+    """Split a compact TextGrid tier according to an annotation convention.
+
+    The split command will split a compact annotation tier in one or more
+    TextGrid files (specified by SOURCE) following the a specified annotation
+    convention, given either by the -c/--convention option or using a default
+    convention which has been set globally for holltwr (via holltwr config
+    default-convention).
+
+    SOURCE can be either a single file name (e.g. myfile.TextGrid), a list of
+    file names (e.g. first.TextGrid second.TextGrid), or a POSIX-compliant
+    glob pattern, where '*' can be any string, '?' any single character, and
+    '**' any directory including all of its subdirectories (e.g. *.TextGrid
+    will target all the files with the .TextGrid extension in the current
+    working directory).
+
+    By default, holltwr will overwrite the files in-situ, i.e. if given
+    myfile.TextGrid as SOURCE, it will modify that file.
+    The option -d/--destination allows this behaviour to be modified, with
+    holltwr instead writing the result to a different file. The destination
+    can be a single file name (e.g. myupdatedfile.TextGrid), a path to a
+    directory (e.g. updated_files/ -- directory paths must end in '/' or '\\'!),
+    or a renaming pattern containing at most one '*' which will be replaced with
+    the relative path and name of the input file minus its file extension (e.g.
+    'holltwr split first.TextGrid second.TextGrid -d *_expanded.TextGrid' will
+    write its output to the files first_expanded.TextGrid and
+    second_expanded.TextGrid).
+
+    Before holltwr modifies any files that already exist you will be prompted to
+    confirm that you want to overwrite these files (this is because an
+    annotation convention might include the instruction to remove the compact
+    annotation tier, i.e. data could be lost). If you do not want to be prompted
+    you can confirm that you are fine with this behaviour beforehand by
+    specifying the option --yes.
+    """
     global configuration
     if convention is None:
         if hasattr(configuration, "default_convention"):
@@ -146,11 +197,11 @@ def split(source: tuple[Path], destination: str | None = None, convention: Path 
             )
             click.echo(
                 "Have you tried to specify a convention file with the option "
-                + click.style("--convention", fg="black")
+                + click.style("--convention", dim=True)
                 + " or setting a default convention with the command "
                 + click.style("holltwr ", fg="green")
-                + click.style("config default-convention ", fg="white")
-                + click.style("FILENAME", fg="black")
+                + click.style("config default-convention ", fg="cyan")
+                + click.style("FILENAME", dim=True)
                 + "?"
             )
             exit(ExitCode.GENERAL_ERROR)
@@ -188,22 +239,65 @@ def split(source: tuple[Path], destination: str | None = None, convention: Path 
         destfiles.add(destfile)
         work_list.append((infile, destfile))
     # Check if any of the target files already exist
-    dest_exists: set[Path] = set()
-    for destfile in destfiles:
-        if destfile.exists():
-            dest_exists.add(destfile)
-    if dest_exists:
-        click.secho("ATTENTION: ", fg="red", nl=False)
-        click.echo("The following file(s) already exist and will be overwritten:")
-        counter = 1
-        for destfile in dest_exists:
-            click.secho(f"[{counter}] ", fg="red", nl=False)
-            click.secho(str(destfile), fg="blue")
-        if not click.confirm("Do you wish to proceed?"):
-            exit(ExitCode.GENERAL_ERROR)
-    with click.progressbar(work_list) as progress:
+    if not yes:
+        dest_exists: set[Path] = set()
+        for destfile in destfiles:
+            if destfile.exists():
+                dest_exists.add(destfile)
+        if dest_exists:
+            click.secho("ATTENTION: ", fg="red", nl=False)
+            click.echo("The following file(s) already exist and will be overwritten:")
+            counter = 1
+            for destfile in dest_exists:
+                click.secho(f"[{counter}] ", fg="red", nl=False)
+                click.secho(str(destfile), fg="blue")
+            if not click.confirm("Do you wish to proceed?"):
+                exit(ExitCode.GENERAL_ERROR)
+    with click.progressbar(work_list) as progress:  # type: ignore
+        progress: list[tuple[Path, Path]]
         for file in progress:
             _split_file(file[0], file[1])
+
+
+@main.group()
+def validate(**kwargs: dict[str, Any]):
+    """Validate conventions and TextGrids."""
+    pass
+
+@validate.command()
+@click.argument(
+    "filename",
+    type=click.Path(
+        path_type=Path, exists=True,
+        file_okay=True, dir_okay=False,
+        readable=True
+    ),
+    required=True
+)
+def convention(filename: Path):
+    """Validate a compact annotation convention.
+
+    Checks that a compact annotation convention conforms to holltwr's JSON
+    Schema and can be loaded by holltwr, giving feedback if any errors or
+    issues are found.
+    """
+    _validate_convention(filename)
+
+
+@validate.command()
+@click.argument(
+    "filename",
+    type=click.Path(
+        path_type=Path, exists=True,
+        file_okay=True, dir_okay=False,
+        readable=True
+    ),
+    required=True
+)
+def textgrid(filename: Path):
+    """Validate a TextGrid file."""
+    click.secho("ERROR: ", fg="red", nl=False)
+    click.echo("This functionality has not been implemented yet.")
 
 
 @main.group()
@@ -214,6 +308,7 @@ def config(**kwargs: dict[str, Any]):
     a default convention to use if not otherwise specified.
     """
     pass
+
 
 @config.command()
 @click.confirmation_option(
@@ -248,14 +343,6 @@ def default_convention(filename: Path):
     click.secho("OK.", bold=True)
 
 
-# @main.command()
-# @click.argument(
-#     "filename",
-#     type=click.Path(
-#         exists=True, file_okay=True, dir_okay=False, readable=True,
-#         resolve_path=True, path_type=Path
-#     )
-# )
 def _validate_convention(filename: Path) -> Convention:
     """Validate a convention file."""
     click.secho("Validating convention file ", fg="yellow", nl=False)
@@ -278,3 +365,12 @@ def _validate_convention(filename: Path) -> Convention:
         click.secho("\nERROR: ", fg="red", nl=False)
         click.echo(e)
         exit(ExitCode.JSON_IO_ERROR)
+
+
+def _split_file(source: Path | str, dest: Path | str):
+    convention_file = Path("./conventions/lart5.json")
+    convention = Convention.load(convention_file)
+    parser = AnnotationParser(convention)
+    with TextGrid(str(source)) as tg:
+        process_textgrid(tg, parser)
+        tg.save(str(dest))
