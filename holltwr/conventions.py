@@ -258,7 +258,7 @@ class Convention:
         if not result.valid:
             raise JSONValidationError(
                 "Convention data failed validation",
-                errors=list(result.collect_errors())  # type: ignore
+                errors=result.output("detailed")
             )
 
     @classmethod
